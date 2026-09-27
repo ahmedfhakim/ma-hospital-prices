@@ -14,8 +14,10 @@ data "aws_iam_openid_connect_provider" "github" {
 }
 
 locals {
-  github_oidc_arn = var.create_github_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : data.aws_iam_openid_connect_provider.github[0].arn
-  glue_prefix     = "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}"
+  github_oidc_arn  = var.create_github_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : data.aws_iam_openid_connect_provider.github[0].arn
+  glue_prefix      = "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}"
+  github_owner     = split("/", var.github_repo)[0]
+  github_repo_name = split("/", var.github_repo)[1]
 }
 
 data "aws_iam_policy_document" "github_trust" {
@@ -31,10 +33,16 @@ data "aws_iam_policy_document" "github_trust" {
       values   = ["sts.amazonaws.com"]
     }
     # Only workflows running on this repo's main branch (scheduled or manual runs).
+    # GitHub now includes the owner's and repo's permanent numeric IDs in this claim
+    # ("repo:owner@123/name@456:ref:..."), so a deleted-and-recreated repo with the same
+    # name can't inherit access. The older name-only format is accepted too.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/main"]
+      values = [
+        "repo:${local.github_owner}@${var.github_owner_id}/${local.github_repo_name}@${var.github_repo_id}:ref:refs/heads/main",
+        "repo:${var.github_repo}:ref:refs/heads/main",
+      ]
     }
   }
 }

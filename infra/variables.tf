@@ -16,6 +16,18 @@ variable "github_repo" {
   default     = "ahmedfhakim/ma-hospital-prices"
 }
 
+variable "github_owner_id" {
+  description = "Numeric ID of the GitHub account that owns the repo (public; see README)."
+  type        = string
+  default     = "88803496"
+}
+
+variable "github_repo_id" {
+  description = "Numeric ID of the repo (public). Pins trust to THIS repo, even if the name is ever reused."
+  type        = string
+  default     = "1391232187"
+}
+
 variable "budget_email" {
   description = "Where AWS Budgets sends cost alerts."
   type        = string
