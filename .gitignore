@@ -12,3 +12,9 @@ __pycache__/
 .pytest_cache/
 # dashboard/site/index.html IS committed: it's the published page (aggregates only)
 .DS_Store
+# Terraform: local state and your personal settings stay off GitHub
+# (.terraform.lock.hcl IS committed -- it pins provider versions)
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/terraform.tfvars

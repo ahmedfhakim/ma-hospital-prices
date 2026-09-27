@@ -117,3 +117,27 @@ def test_legacy_tls_is_opt_in_and_still_verifies_certificates():
     assert ctx.options & OP_LEGACY_SERVER_CONNECT          # old handshake allowed...
     assert ctx.verify_mode == ssl.CERT_REQUIRED             # ...but certificates still checked
     assert ctx.check_hostname
+
+
+def test_glue_table_matches_parser_schema():
+    """infra/glue.tf defines the Athena table over the parser's Parquet output.
+    If the two drift apart, Athena silently reads NULLs -- so check they match."""
+    import re
+    import pyarrow as pa
+    from ingest.parse import SCHEMA
+
+    tf = (Path(__file__).resolve().parent.parent / "infra" / "glue.tf").read_text()
+    block = tf.split("charges_columns = [", 1)[1].split("]\n", 1)[0]
+    glue = re.findall(r'\{\s*name\s*=\s*"([^"]+)",\s*type\s*=\s*"([^"]+)"\s*\}', block)
+
+    def hive_type(t):
+        if t == pa.string():
+            return "string"
+        if t == pa.float64():
+            return "double"
+        if pa.types.is_list(t):
+            fields = ",".join(f"{f.name}:{hive_type(f.type)}" for f in t.value_type)
+            return f"array<struct<{fields}>>"
+        raise AssertionError(f"unmapped type {t}")
+
+    assert glue == [(f.name, hive_type(f.type)) for f in SCHEMA]

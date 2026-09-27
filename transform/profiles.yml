@@ -1,7 +1,23 @@
 hospital_prices:
   target: dev
   outputs:
+    # Local development, CI and the free live dashboard. No account needed.
     dev:
       type: duckdb
       path: ../data/warehouse.duckdb
+      threads: 4
+
+    # AWS: models run in Athena, tables are written to S3 as Parquet.
+    # Bucket / region / workgroup come from `terraform output` (see infra/README.md).
+    # Credentials come from your AWS profile locally, or from the GitHub Actions
+    # OIDC role in CI -- never from this file.
+    athena:
+      type: athena
+      region_name: "{{ env_var('AWS_REGION', 'us-east-1') }}"
+      database: awsdatacatalog
+      schema: hospital_prices          # Glue database for dbt's models (Terraform creates it)
+      work_group: "{{ env_var('ATHENA_WORKGROUP', 'hospital-prices') }}"
+      s3_staging_dir: "s3://{{ env_var('HPT_BUCKET', 'set-HPT_BUCKET') }}/athena-results/"
+      s3_data_dir: "s3://{{ env_var('HPT_BUCKET', 'set-HPT_BUCKET') }}/warehouse/"
+      s3_data_naming: schema_table     # stable S3 paths: warehouse/<schema>/<table>/
       threads: 4

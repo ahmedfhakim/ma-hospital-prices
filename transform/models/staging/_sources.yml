@@ -3,6 +3,11 @@ version: 2
 sources:
   - name: hpt
     description: Output of the ingest package -- every hospital's price file, parsed to one standard layout.
+    # DuckDB reads the Parquet / JSON files directly (external_location below).
+    # Athena reads the same files from S3 through Glue tables that Terraform defines
+    # (infra/glue.tf), in the Glue database named here.
+    database: "{{ 'awsdatacatalog' if target.type == 'athena' else target.database }}"
+    schema: "{{ var('athena_raw_database', 'hospital_prices_raw') if target.type == 'athena' else 'main' }}"
     tables:
       - name: charges
         description: >

@@ -1,0 +1,82 @@
+# The production pipeline, weekly and on demand:
+#   download price files -> parse -> S3 -> Athena (dbt build + tests) -> dashboard -> GitHub Pages
+#
+# No AWS keys are stored in GitHub. The job asks GitHub for a signed OIDC token and trades
+# it for temporary credentials on the role Terraform created (infra/github_oidc.tf), which
+# only trusts this repo's main branch.
+#
+# One-time setup: Settings -> Secrets and variables -> Actions -> Variables:
+#   AWS_ROLE_ARN, AWS_REGION, HPT_BUCKET, ATHENA_WORKGROUP   (values: `terraform output`)
+name: AWS pipeline
+
+on:
+  schedule:
+    - cron: "17 11 * * 1" # Mondays, 11:17 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: aws-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline:
+    if: vars.AWS_ROLE_ARN != '' # skip quietly until AWS is set up
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write # needed to request the OIDC token for AWS
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      HPT_BUCKET: ${{ vars.HPT_BUCKET }}
+      ATHENA_WORKGROUP: ${{ vars.ATHENA_WORKGROUP }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements-aws.txt
+
+      - name: Get temporary AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Download and parse price files
+        # one hospital failing (site down, new file quirk) shouldn't stop the others;
+        # its previous data stays in S3
+        run: python -m ingest run || echo "::warning::One or more hospitals failed -- see the log above"
+
+      - name: Publish to S3 and register with Athena
+        run: python -m ingest publish
+
+      - name: dbt build on Athena (models + tests)
+        working-directory: transform
+        run: dbt build --profiles-dir . --target athena --full-refresh
+
+      - name: Build dashboard from the Athena marts
+        run: python dashboard/build.py --source athena
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard/site
+
+  deploy:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

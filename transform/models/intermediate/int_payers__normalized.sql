@@ -23,7 +23,7 @@ cleaned as (
         payer_name,
         plan_name,
         regexp_replace(regexp_replace(payer_name, '\s*\[\d+\]\s*$', ''), '^ZZZ', '')  as payer_display_name,
-        payer_name ilike 'zzz%'                                                        as is_retired_payer
+        lower(payer_name) like 'zzz%'                                                  as is_retired_payer
     from raw_payers
 
 ),
@@ -43,19 +43,26 @@ candidates as (
 
 ),
 
+ranked as (
+
+    select
+        *,
+        row_number() over (
+            partition by payer_name, plan_name
+            order by match_source, priority, specificity desc
+        ) as rn
+    from candidates
+
+),
+
 best as (
 
-    select *
-    from candidates
-    qualify row_number() over (
-        partition by payer_name, plan_name
-        order by match_source, priority, specificity desc
-    ) = 1
+    select * from ranked where rn = 1
 
 )
 
 select
-    md5(c.payer_name || '|' || coalesce(c.plan_name, ''))          as payer_key,
+    {{ dbt.hash("c.payer_name || '|' || coalesce(c.plan_name, '')") }} as payer_key,
     c.payer_name,
     c.plan_name,
     c.payer_display_name,
@@ -66,19 +73,19 @@ select
         when b.product_line_override is not null then b.product_line_override
         -- an insurer can administer government coverage, e.g. "Optum / VA Government"
         -- (the VA's community care network) is not a commercial product
-        when regexp_matches(lower(coalesce(c.plan_name, '')), '\bva\b|veteran|tricare')
+        when {{ regex_match("lower(coalesce(c.plan_name, ''))", '\\bva\\b|veteran|tricare') }}
             then 'Other government'
-        when regexp_matches(lower(c.payer_display_name), 'medicaid|masshealth|\baco\b|\bmco\b|\bmcd\b')
+        when {{ regex_match('lower(c.payer_display_name)', 'medicaid|masshealth|\\baco\\b|\\bmco\\b|\\bmcd\\b') }}
             then 'Medicaid'
-        when regexp_matches(lower(c.payer_display_name), 'medicare|\bsco\b|senior|wellcare|eternal')
+        when {{ regex_match('lower(c.payer_display_name)', 'medicare|\\bsco\\b|senior|wellcare|eternal') }}
             then 'Medicare Advantage'
         -- the payer name is ambiguous (e.g. "CCA", "FALLON"); the contract says what it is.
         -- Check "commercial" first: contracts are often priced as a % of Medicare/Medicaid,
         -- e.g. "FALLON COMMERCIAL (130% OF MEDICARE)" is a commercial contract.
         -- (Connector Care = the subsidized state marketplace, a commercial product.)
-        when regexp_matches(lower(coalesce(c.plan_name, '')), 'commercial|connector|qhp') then 'Commercial'
-        when regexp_matches(lower(coalesce(c.plan_name, '')), 'medicaid|masshealth') then 'Medicaid'
-        when regexp_matches(lower(coalesce(c.plan_name, '')), 'medicare') then 'Medicare Advantage'
+        when {{ regex_match("lower(coalesce(c.plan_name, ''))", 'commercial|connector|qhp') }} then 'Commercial'
+        when {{ regex_match("lower(coalesce(c.plan_name, ''))", 'medicaid|masshealth') }} then 'Medicaid'
+        when {{ regex_match("lower(coalesce(c.plan_name, ''))", 'medicare') }} then 'Medicare Advantage'
         else 'Commercial'
     end                                                             as product_line
 

@@ -15,10 +15,13 @@ Since 2021, federal rules (45 CFR 180) require every U.S. hospital to publish a 
 
 ## Architecture
 
+The same code runs in two places. Locally and in CI it uses DuckDB, which is free and needs no account. In production it runs weekly on AWS.
+
 ```
-hospitals.yml ─► cms-hpt.txt lookup ─► download ─► parse ─► Parquet ─► dbt (DuckDB) ─► static dashboard
-                  (find the file)       (skip if    (3 layouts                 staging          (GitHub Pages)
-                                        unchanged)   → 1 schema)               → marts + tests
+                                    ┌─► Local / CI:  Parquet on disk ─► dbt on DuckDB ────────┐
+hospitals.yml ─► cms-hpt.txt ─► download ─► parse ─┤                                                       ├─► static dashboard
+                 lookup          (skip if    (3 layouts│                                                       │   (GitHub Pages)
+                                 unchanged)  → 1 schema)└─► AWS (weekly): S3 ─► Glue catalog ─► dbt on Athena ┘
 ```
 
 | Layer | Tool | What it does |
@@ -26,9 +29,11 @@ hospitals.yml ─► cms-hpt.txt lookup ─► download ─► parse ─► Parq
 | **Discover** | `ingest/discover.py` | Reads each hospital system's `cms-hpt.txt` index to find the current price file |
 | **Download** | `ingest/download.py` | Streams to disk. Skips unchanged files (ETag / Last-Modified, then SHA-256). Unzips if needed |
 | **Parse** | `ingest/parse.py` | Tall CSV, wide CSV and JSON → one standard long table. DuckDB for CSV, streaming `ijson` for JSON, so multi-GB files never load into memory. Fixes Windows-1252 encoding |
-| **Model** | dbt + DuckDB | Staging → billing codes and payer normalization → star schema → dashboard marts |
-| **Publish** | `dashboard/build.py` | Bakes the marts into one static HTML page. No server, no BI license |
-| **CI** | GitHub Actions | Parser tests + the full pipeline on demo data for every push. Publishes the page on change |
+| **Publish to AWS** | `ingest/cloud.py` | Uploads raw files and Parquet to S3 (skipping unchanged content), then registers each hospital's partition with Athena |
+| **Model** | dbt: DuckDB **or** Athena | Staging → billing codes and payer normalization → star schema → dashboard marts. One set of models; the few dialect differences live in `macros/cross_db.sql` |
+| **Infrastructure** | Terraform (`infra/`) | S3 bucket, Glue tables, Athena workgroup with a per-query scan limit, $5 budget alert, and a keyless (OIDC) role for GitHub Actions |
+| **Dashboard** | `dashboard/build.py` | Bakes the marts, from either engine, into one static HTML page. No server, no BI license |
+| **Automation** | GitHub Actions | `ci.yml`: tests + full demo pipeline on every push. `aws-pipeline.yml`: weekly production run on AWS. `pages.yml`: publishes the dashboard |
 
 ### dbt models
 
@@ -53,7 +58,7 @@ marts/          dim_hospital, dim_payer, dim_service
 ```bash
 make setup && source .venv/bin/activate
 
-make test        # parser tests against CMS's official example files
+make test        # parser tests against CMS's official example files, plus mocked-AWS publish tests
 make demo        # whole pipeline on 3 fictional hospitals, ~10 seconds
 open dashboard/site/index.html
 
@@ -62,6 +67,13 @@ make all         # download → parse → dbt build → dashboard, with real dat
 ```
 
 To add a hospital, add an entry to `hospitals.yml` and run `make all`. Only new or changed files are re-downloaded.
+
+**On AWS:** see [`infra/README.md`](infra/README.md) for the one-time setup (about 30 minutes). After that:
+```bash
+python -m ingest publish                                                  # S3 + Athena partitions
+cd transform && dbt build --profiles-dir . --target athena --full-refresh  # models + tests in Athena
+python dashboard/build.py --source athena
+```
 
 ## What real files taught us
 
@@ -102,6 +114,10 @@ Boston Medical Center's file (March 2026, schema v3.0.0): 483 MB, 1.33 million r
 - **One standard layout at ingestion.** Tall, wide and JSON differ only in shape, so the parser removes that difference and dbt never needs to know which layout a hospital used. The test suite proves it: CMS's example hospital parses to identical rates from all three layouts.
 - **Payer matching in a seed, not in SQL.** The mapping is data that non-engineers can review and extend. Priority numbers settle overlaps (e.g. "Mass General Brigham Health Plan" wins over other patterns).
 - **Percentage rates converted, but flagged.** "60% of billed charges" becomes 0.6 × the list price, with `rate_source` recording that it was derived.
+- **One dbt project, two engines.** DuckDB costs nothing and needs no account, so CI and anyone cloning the repo can run everything. Athena is the production engine. Most SQL is written to run on both; the rest (arrays, regex, median, date parsing) goes through small dispatch macros. Rewriting the SQL to be portable changed no results on DuckDB: all 1.56M rates, 1,212 dashboard rows and 202 payer mappings came out identical. On Athena the fact table and payer mappings match exactly too; the one known difference is that Athena has no exact median, so medians use `approx_percentile` (a few list prices shift slightly; e.g. 9,761 vs. 9,767 rate-above-list-price warnings).
+- **Serverless on AWS: S3 + Athena, no warehouse to keep running.** At this data size, a weekly run costs cents a month. A Snowflake trial would have expired after 30 days (which is what took an earlier project of mine offline).
+- **No AWS keys in GitHub.** The weekly job gets temporary credentials through OIDC, for a role that only trusts this repo's `main` branch and can only touch this project's bucket, workgroup and Glue databases.
+- **Cost guardrails in code.** Athena cancels any query scanning over 2 GiB, lifecycle rules delete query results after 7 days and cap old file versions, and a budget emails at $4.
 - **Static dashboard.** The published page contains only aggregates and loads instantly. Rebuilding it is one command.
 
 ## Known limitations
@@ -115,7 +131,8 @@ Boston Medical Center's file (March 2026, schema v3.0.0): 483 MB, 1.33 million r
 
 - [x] **Milestone 1:** ingestion for all CMS layouts, dbt models + tests, dashboard, CI. Three real hospitals (BMC, MGH, BIDMC)
 - [ ] **Milestone 2:** validate files against the CMS JSON schema and quarantine failures. Track file versions over time
-- [ ] **Milestone 3:** Dagster schedule (weekly), Docker image
+- [ ] **Milestone 3 (AWS):** S3 + Glue + Athena, Terraform, keyless weekly GitHub Actions pipeline (built and tested locally; first run on AWS pending)
+- [ ] **Next:** Docker image; Dagster for orchestration with per-hospital retries
 - [ ] **Milestone 4:** every Massachusetts hospital. Compare negotiated rates with 2026 actual-paid amounts. Parse formula-only rates. Benchmark against CMS Medicare fee schedules
 
 ## Sources

@@ -5,6 +5,7 @@ Command line:
   python -m ingest run                      # download changed files and parse them to Parquet
   python -m ingest run --only bmc           # just one hospital
   python -m ingest local FILE --id my_hosp  # parse a file you already downloaded by hand
+  python -m ingest publish                  # upload parsed files to S3 + register with Athena
 """
 from __future__ import annotations
 
@@ -77,6 +78,11 @@ def cmd_run(args):
     sys.exit(1 if failures else 0)
 
 
+def cmd_publish(args):
+    from .cloud import publish  # boto3 is only needed for the AWS path
+    publish(DATA, load_manifest(MANIFEST), only=args.only, skip_raw=args.skip_raw)
+
+
 def cmd_local(args):
     meta = parse_file(Path(args.file), args.id, args.out)
     print(f"[{args.id}] parsed {meta['row_count']:,} rows ({meta['source_format']}, v{meta.get('version')})")
@@ -91,12 +97,15 @@ def main():
         s.add_argument("--only")
         if name == "run":
             s.add_argument("--force-parse", action="store_true", help="re-parse even if the file is unchanged")
+    s = sub.add_parser("publish", help="upload parsed files to S3 and register them with Athena")
+    s.add_argument("--only")
+    s.add_argument("--skip-raw", action="store_true", help="don't upload the original (large) price files")
     s = sub.add_parser("local")
     s.add_argument("file")
     s.add_argument("--id", required=True)
     s.add_argument("--out", type=Path, default=DATA / "parquet")
     args = p.parse_args()
-    {"discover": cmd_discover, "run": cmd_run, "local": cmd_local}[args.cmd](args)
+    {"discover": cmd_discover, "run": cmd_run, "local": cmd_local, "publish": cmd_publish}[args.cmd](args)
 
 
 if __name__ == "__main__":

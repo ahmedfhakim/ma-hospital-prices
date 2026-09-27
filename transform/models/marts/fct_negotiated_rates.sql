@@ -10,7 +10,7 @@ with item_prices as (
         max(gross_charge)       as gross_charge,
         max(discounted_cash)    as discounted_cash
     from {{ ref('int_charges__billing_code') }}
-    group by all
+    group by hospital_id, description, code_signature, setting, modifiers
 
 ),
 
@@ -23,7 +23,7 @@ item_prices_any_setting as (
         max(gross_charge)       as gross_charge,
         max(discounted_cash)    as discounted_cash
     from {{ ref('int_charges__billing_code') }}
-    group by all
+    group by hospital_id, description, code_signature, modifiers
 
 ),
 
@@ -33,17 +33,16 @@ prices_by_billing_code as (
     -- and negotiated rates on separate items that share only the billing code
     select
         hospital_id, billing_code, billing_code_type,
-        median(gross_charge)    as gross_charge,
-        median(discounted_cash) as discounted_cash
+        {{ median('gross_charge') }}    as gross_charge,
+        {{ median('discounted_cash') }} as discounted_cash
     from {{ ref('int_charges__billing_code') }}
     where billing_code is not null and gross_charge is not null
-    group by all
+    group by hospital_id, billing_code, billing_code_type
 
 )
 
 select
-    md5(concat_ws('|', c.hospital_id, c.description, c.code_signature, c.setting,
-                  c.modifiers, c.payer_name, c.plan_name))  as rate_key,
+    {{ dbt.hash("concat_ws('|', c.hospital_id, c.description, c.code_signature, c.setting, c.modifiers, c.payer_name, c.plan_name)") }} as rate_key,
     c.hospital_id,
     c.billing_code,
     c.billing_code_type,

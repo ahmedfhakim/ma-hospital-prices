@@ -1,0 +1,4 @@
+# Everything in requirements.txt, plus what the AWS path needs.
+-r requirements.txt
+dbt-athena>=1.9
+pyathena>=3
