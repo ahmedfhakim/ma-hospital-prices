@@ -138,7 +138,6 @@ Boston Medical Center's file (March 2026, schema v3.0.0): 483 MB, 1.33 million r
 - **One dbt project, two engines.** DuckDB costs nothing and needs no account, so CI and anyone cloning the repo can run everything. Athena is the production engine. Most SQL is written to run on both; the rest (arrays, regex, median, date parsing) goes through small dispatch macros. Rewriting the SQL to be portable changed no results on DuckDB: all 1.56M rates, 1,212 dashboard rows and 202 payer mappings came out identical. On Athena the fact table and payer mappings match exactly too; the one known difference is that Athena has no exact median, so medians use `approx_percentile` (a few list prices shift slightly; e.g. 9,761 vs. 9,767 rate-above-list-price warnings).
 - **Serverless on AWS: S3 + Athena, no warehouse to keep running.** At this data size, a weekly run costs cents a month. 
 - **No AWS keys in GitHub.** The weekly job gets temporary credentials through OIDC, for a role that only trusts this repo's `main` branch and can only touch this project's bucket, workgroup and Glue databases.
-- **Cost guardrails in code.** Athena cancels any query scanning over 2 GiB, lifecycle rules delete query results after 7 days and cap old file versions, and a budget emails at $4.
 - **Static dashboard.** The published page contains only aggregates and loads instantly. Rebuilding it is one command.
 
 ## Known limitations
