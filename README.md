@@ -2,7 +2,7 @@
 
 A pipeline that collects hospital price transparency files, models them with dbt, and publishes a dashboard comparing what insurers pay for the same service at different hospitals.
 
-**Live dashboard:** _add your GitHub Pages link here_
+**Live dashboard:** https://ahmedfhakim.github.io/ma-hospital-prices/
 
 ## Why this data
 
