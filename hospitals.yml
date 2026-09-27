@@ -1,0 +1,33 @@
+# Hospitals to ingest.
+#
+# Each entry is found through the hospital system's cms-hpt.txt index:
+#   domain:          website that hosts https://<domain>/cms-hpt.txt
+#   location_match:  text that appears in that hospital's "location-name" line
+#
+# Run `python -m ingest discover` first. If a lookup fails, the error prints every
+# location-name in that index, so you can fix location_match. If a hospital has no
+# working cms-hpt.txt, find the file on its price transparency page and pin it:
+#   mrf_url: https://...
+#
+# Milestone 1 starts with three Boston academic medical centers. The domains and
+# names below are starting guesses -- confirm them with `discover`.
+
+hospitals:
+  - id: bmc
+    name: Boston Medical Center
+    domain: www.bmc.org
+    location_match: Boston Medical Center
+
+  - id: mgh
+    name: Massachusetts General Hospital
+    domain: www.massgeneralbrigham.org
+    location_match: Massachusetts General Hospital
+
+  - id: bidmc
+    name: Beth Israel Deaconess Medical Center
+    domain: www.bidmc.org
+    location_match: Beth Israel Deaconess Medical Center
+    # This server only supports TLS legacy renegotiation, which modern Python refuses
+    # (UNSAFE_LEGACY_RENEGOTIATION_DISABLED). Allowed for this hospital only;
+    # certificates are still verified. See ingest/http.py.
+    legacy_tls: true

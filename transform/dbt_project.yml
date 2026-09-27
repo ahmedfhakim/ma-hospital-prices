@@ -1,0 +1,25 @@
+name: hospital_prices
+version: "1.0.0"
+profile: hospital_prices
+
+vars:
+  # Where ingestion wrote its Parquet output (relative to transform/)
+  #   real data:  ../data/parquet           (default)
+  #   demo data:  dbt build --vars '{parquet_dir: ../data/demo/parquet}'
+  parquet_dir: ../data/parquet
+
+models:
+  hospital_prices:
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: view
+    marts:
+      +materialized: table
+
+seeds:
+  hospital_prices:
+    shoppable_services:
+      +column_types: {billing_code: varchar}
+    payer_patterns:
+      +column_types: {pattern: varchar, payer_group: varchar, priority: integer, product_line: varchar}

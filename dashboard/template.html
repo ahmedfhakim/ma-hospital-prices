@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Massachusetts Hospital Prices</title>
+<meta name="description" content="Negotiated insurer rates, cash prices and price spreads for common services at Massachusetts hospitals, from CMS price transparency files.">
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #f5f4f1;
+    --surface-1: #fcfcfb;
+    --border: #e3e2dd;
+    --grid: #ecebe7;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #6f6e69;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --range: #b7d3f6;
+    --banner-bg: #fff4dc;
+    --banner-ink: #6b4a00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-0: #121211;
+      --surface-1: #1a1a19;
+      --border: #33332f;
+      --grid: #2a2a27;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #9a998f;
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --range: #184f95;
+      --banner-bg: #3a2f14;
+      --banner-ink: #f3d68a;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0: #121211; --surface-1: #1a1a19; --border: #33332f; --grid: #2a2a27;
+    --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #9a998f;
+    --series-1: #3987e5; --series-2: #d95926; --range: #184f95;
+    --banner-bg: #3a2f14; --banner-ink: #f3d68a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--surface-0); color: var(--text-primary);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 18px; margin: 0 0 4px; }
+  .lede { color: var(--text-secondary); margin: 0 0 20px; max-width: 70ch; }
+  .banner {
+    background: var(--banner-bg); color: var(--banner-ink); border-radius: 8px;
+    padding: 10px 14px; margin: 0 0 20px; font-size: 14px;
+  }
+  .filters { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 16px; }
+  .filters label { flex: 1 1 240px; max-width: 420px; min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+  select {
+    font: inherit; color: var(--text-primary); background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; width: 100%;
+  }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 0 0 16px; }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .tile .k { font-size: 12px; color: var(--text-secondary); }
+  .tile .v { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .tile .s { font-size: 12px; color: var(--text-muted); margin-top: 2px; overflow-wrap: anywhere; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 18px 18px 12px; margin: 0 0 16px; }
+  .card .sub { color: var(--text-secondary); font-size: 13px; margin: 0 0 10px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--text-secondary); margin: 0 0 6px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  svg { display: block; width: 100%; overflow: visible; }
+  svg text { fill: var(--text-secondary); font-size: 12px; }
+  svg .label-strong { fill: var(--text-primary); font-weight: 600; }
+  .hit { fill: transparent; cursor: default; }
+  .mark:hover, .mark:focus { outline: none; stroke: var(--text-primary); stroke-width: 1.5; }
+  #tip {
+    position: fixed; pointer-events: none; z-index: 10; display: none;
+    background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); max-width: 280px;
+  }
+  #tip .val { font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  #tip .lbl { color: var(--text-secondary); }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }
+  .table-wrap { overflow-x: auto; margin-top: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  td.n, th.n { text-align: right; }
+  footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
+  footer p { margin: 4px 0; }
+  .empty { color: var(--text-muted); padding: 24px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>What does care cost in Massachusetts?</h1>
+  <p class="lede">Hospitals must publish the prices they negotiate with every insurer. This page compares those rates for common services across hospitals, alongside each hospital's cash price.</p>
+  <div class="banner" id="demo-banner" hidden>Demo data: these hospitals and prices are fictional and exist only to test the pipeline.</div>
+
+  <div class="filters">
+    <label>Service <select id="f-service"></select></label>
+    <label>Insurance type <select id="f-line"></select></label>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card">
+    <h2 id="chart-title">Negotiated rates by hospital</h2>
+    <p class="sub">Each dot is one insurer's median rate across its plans. The bar spans that hospital's lowest to highest plan rate.</p>
+    <div class="legend" id="legend1"></div>
+    <div id="chart1"></div>
+    <details>
+      <summary>Show as table</summary>
+      <div class="table-wrap"><table id="table1"></table></div>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Where commercial prices vary most</h2>
+    <p class="sub">The highest hospital's median commercial rate divided by the lowest hospital's, per service.</p>
+    <div id="chart2"></div>
+  </section>
+
+  <footer id="footer"></footer>
+</main>
+<div id="tip" role="status"></div>
+
+<script>
+const DATA = /*__DATA__*/null;
+
+const $ = (id) => document.getElementById(id);
+const usd = (v) => v == null ? "–" : "$" + Math.round(v).toLocaleString("en-US");
+const median = (a) => { const s = a.filter(v => v != null).sort((x, y) => x - y); if (!s.length) return null; const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const el = (tag, attrs = {}, text) => {
+  const svgTags = ["svg", "g", "rect", "line", "circle", "path", "text"];
+  const n = svgTags.includes(tag) ? document.createElementNS("http://www.w3.org/2000/svg", tag) : document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  if (text != null) n.textContent = text;
+  return n;
+};
+const niceMax = (v) => { const p = Math.pow(10, Math.floor(Math.log10(v))); return Math.ceil(v / p * 2) / 2 * p; };
+
+// ---------- tooltip ----------
+const tip = $("tip");
+function showTip(evt, lines) {
+  tip.replaceChildren();
+  lines.forEach(([cls, text]) => tip.appendChild(el("div", { class: cls }, text)));
+  tip.style.display = "block";
+  const r = evt.target.getBoundingClientRect ? evt.target.getBoundingClientRect() : { left: evt.clientX, top: evt.clientY, width: 0 };
+  const x = Math.min((evt.clientX ?? r.left + r.width / 2) + 14, window.innerWidth - tip.offsetWidth - 8);
+  const y = Math.max((evt.clientY ?? r.top) - tip.offsetHeight - 10, 8);
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+const hideTip = () => { tip.style.display = "none"; };
+function hoverable(node, lines) {
+  node.setAttribute("tabindex", "0");
+  node.addEventListener("pointermove", (e) => showTip(e, lines));
+  node.addEventListener("pointerleave", hideTip);
+  node.addEventListener("focus", (e) => showTip(e, lines));
+  node.addEventListener("blur", hideTip);
+}
+
+// ---------- filters ----------
+const services = [...new Map(DATA.prices.map(r => [r.billing_code, r])).values()]
+  .sort((a, b) => a.category.localeCompare(b.category) || a.service_name.localeCompare(b.service_name));
+const byCat = {};
+services.forEach(s => (byCat[s.category] ||= []).push(s));
+for (const [cat, list] of Object.entries(byCat)) {
+  const g = el("optgroup", { label: cat });
+  list.forEach(s => g.appendChild(el("option", { value: s.billing_code }, s.service_name)));
+  $("f-service").appendChild(g);
+}
+const lines = ["Commercial", "Medicare Advantage", "Medicaid", "Medicare (traditional)", "Other government", "Workers comp"].filter(l => DATA.prices.some(r => r.product_line === l));
+lines.forEach(l => $("f-line").appendChild(el("option", { value: l }, l)));
+const start = services.find(s => s.billing_code === "70551") || services[0];
+if (start) $("f-service").value = start.billing_code;
+
+// ---------- tiles ----------
+function tile(k, v, s) {
+  const d = el("div", { class: "tile" });
+  d.append(el("div", { class: "k" }, k), el("div", { class: "v" }, v), el("div", { class: "s" }, s || ""));
+  return d;
+}
+
+// ---------- chart 1: dot + range per hospital ----------
+function renderChart1(rows) {
+  const box = $("chart1");
+  box.replaceChildren();
+  if (!rows.length) { box.appendChild(el("div", { class: "empty" }, "No hospital publishes a rate for this service and insurance type.")); return; }
+
+  const hospitals = [...new Set(rows.map(r => r.hospital_name))];
+  const stats = hospitals.map(h => {
+    const hr = rows.filter(r => r.hospital_name === h);
+    return {
+      hospital: h, rows: hr,
+      min: Math.min(...hr.map(r => r.min_rate)), max: Math.max(...hr.map(r => r.max_rate)),
+      med: median(hr.map(r => r.median_rate)), cash: hr[0].cash_price, gross: hr[0].gross_charge,
+    };
+  }).sort((a, b) => a.med - b.med);
+
+  const W = box.clientWidth || 800;
+  const narrow = W < 560;
+  const labelW = narrow ? 0 : Math.min(300, W * 0.32);
+  const rowH = narrow ? 58 : 40, top = 8, bottom = 28, right = 64;
+  const H = top + stats.length * rowH + bottom;
+  const xMax = niceMax(Math.max(...stats.map(s => Math.max(s.max, s.cash || 0))) * 1.05);
+  const x = (v) => labelW + (W - labelW - right) * (v / xMax);
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": "Negotiated rates by hospital" });
+
+  // grid + axis
+  for (let i = 0; i <= 4; i++) {
+    const v = xMax * i / 4, gx = x(v);
+    svg.appendChild(el("line", { x1: gx, x2: gx, y1: top, y2: H - bottom, stroke: "var(--grid)" }));
+    svg.appendChild(el("text", { x: gx, y: H - 8, "text-anchor": i === 0 ? "start" : "middle" }, usd(v)));
+  }
+
+  stats.forEach((s, i) => {
+    const cy = top + i * rowH + (narrow ? 38 : rowH / 2);
+    const name = s.hospital.replace(" (FICTIONAL DEMO)", "");
+    if (narrow) svg.appendChild(el("text", { x: 0, y: cy - 16, class: "label-strong" }, name));
+    else svg.appendChild(el("text", { x: labelW - 12, y: cy + 4, "text-anchor": "end", class: "label-strong" }, name.length > 40 ? name.slice(0, 39) + "…" : name));
+
+    // range bar (lowest to highest plan)
+    const bar = el("rect", { x: x(s.min), y: cy - 4, width: Math.max(2, x(s.max) - x(s.min)), height: 8, rx: 4, fill: "var(--range)" });
+    svg.appendChild(bar);
+
+    // insurer dots
+    s.rows.forEach(r => {
+      const c = el("circle", { cx: x(r.median_rate), cy, r: 5, fill: "var(--series-1)", stroke: "var(--surface-1)", "stroke-width": 2, class: "mark" });
+      svg.appendChild(c);
+      const hit = el("circle", { cx: x(r.median_rate), cy, r: 12, class: "hit" });
+      const lines = [["val", usd(r.median_rate)], ["", r.payer_group], ["lbl", `${r.plan_rates} plan${r.plan_rates > 1 ? "s" : ""}, ${usd(r.min_rate)}–${usd(r.max_rate)}`]];
+      if (r.median_actually_paid != null) lines.push(["lbl", `Median actually paid: ${usd(r.median_actually_paid)}`]);
+      if (r.pct_of_medicare != null && r.product_line !== "Medicare (traditional)") lines.push(["lbl", `${r.pct_of_medicare}% of this hospital's Medicare rate`]);
+      if (r.includes_percentage_rates) lines.push(["lbl", "Includes contracts that pay a % of the list price"]);
+      hoverable(hit, lines);
+      svg.appendChild(hit);
+    });
+
+    // cash price diamond
+    if (s.cash != null) {
+      const cx = x(s.cash), d = 6;
+      const dia = el("path", { d: `M${cx} ${cy - d} L${cx + d} ${cy} L${cx} ${cy + d} L${cx - d} ${cy} Z`, fill: "var(--series-2)", stroke: "var(--surface-1)", "stroke-width": 2, class: "mark" });
+      svg.appendChild(dia);
+      const hit = el("circle", { cx, cy, r: 12, class: "hit" });
+      hoverable(hit, [["val", usd(s.cash)], ["", "Cash price"], ["lbl", `List price (gross charge): ${usd(s.gross)}`]]);
+      svg.appendChild(hit);
+    }
+
+    // direct label: hospital median
+    svg.appendChild(el("text", { x: W - right + 8, y: cy + 4, class: "label-strong" }, usd(s.med)));
+  });
+  box.appendChild(svg);
+}
+
+// ---------- table view ----------
+function renderTable(rows) {
+  const t = $("table1");
+  t.replaceChildren();
+  const head = el("tr");
+  [["Hospital", ""], ["Insurer", ""], ["Plans", "n"], ["Median rate", "n"], ["Range", "n"], ["Actually paid (median)", "n"], ["% of Medicare", "n"], ["Cash price", "n"], ["List price", "n"]]
+    .forEach(([h, c]) => head.appendChild(el("th", { class: c }, h)));
+  t.appendChild(head);
+  rows.forEach(r => {
+    const tr = el("tr");
+    [[r.hospital_name.replace(" (FICTIONAL DEMO)", ""), ""], [r.payer_group, ""], [r.plan_rates, "n"], [usd(r.median_rate), "n"],
+     [`${usd(r.min_rate)}–${usd(r.max_rate)}`, "n"], [usd(r.median_actually_paid), "n"], [r.pct_of_medicare == null ? "–" : r.pct_of_medicare + "%", "n"], [usd(r.cash_price), "n"], [usd(r.gross_charge), "n"]]
+      .forEach(([v, c]) => tr.appendChild(el("td", { class: c }, String(v))));
+    t.appendChild(tr);
+  });
+}
+
+// ---------- chart 2: spread bars ----------
+function renderChart2() {
+  const box = $("chart2");
+  box.replaceChildren();
+  const rows = DATA.dispersion.slice(0, 12);
+  if (!rows.length) { box.appendChild(el("div", { class: "empty" }, "Needs at least two hospitals.")); return; }
+  const W = box.clientWidth || 800, narrow = W < 560;
+  const labelW = narrow ? 0 : Math.min(300, W * 0.36), rowH = narrow ? 44 : 28, right = 48, top = 4;
+  const H = top + rows.length * rowH + 4;
+  const xMax = Math.max(...rows.map(r => r.high_to_low_ratio)) * 1.02;
+  const x = (v) => labelW + (W - labelW - right) * (v / xMax);
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": "Price spread by service" });
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + (narrow ? 20 : 0), bh = 14, cy = y + rowH / 2 - (narrow ? 12 : 0);
+    if (narrow) svg.appendChild(el("text", { x: 0, y: y - 4, class: "label-strong" }, r.service_name));
+    else svg.appendChild(el("text", { x: labelW - 12, y: cy + 4, "text-anchor": "end", class: "label-strong" }, r.service_name.length > 40 ? r.service_name.slice(0, 39) + "…" : r.service_name));
+    const w = x(r.high_to_low_ratio) - labelW;
+    const bar = el("path", { d: `M${labelW} ${cy - bh / 2} h${w - 4} a4 4 0 0 1 4 4 v${bh - 8} a4 4 0 0 1 -4 4 h${-(w - 4)} Z`, fill: "var(--series-1)", class: "mark" });
+    svg.appendChild(bar);
+    const hit = el("rect", { x: labelW, y: cy - rowH / 2, width: Math.max(w, 24), height: rowH, class: "hit" });
+    hoverable(hit, [["val", `${r.high_to_low_ratio.toFixed(1)}×`], ["", r.service_name],
+      ["lbl", `Lowest: ${usd(r.lowest_hospital_median)} (${r.lowest_hospital.replace(" (FICTIONAL DEMO)", "")})`],
+      ["lbl", `Highest: ${usd(r.highest_hospital_median)} (${r.highest_hospital.replace(" (FICTIONAL DEMO)", "")})`]]);
+    svg.appendChild(hit);
+    svg.appendChild(el("text", { x: x(r.high_to_low_ratio) + 6, y: cy + 4, class: "label-strong" }, `${r.high_to_low_ratio.toFixed(1)}×`));
+  });
+  box.appendChild(svg);
+}
+
+// ---------- page ----------
+function render() {
+  const code = $("f-service").value, line = $("f-line").value;
+  const svc = services.find(s => s.billing_code === code);
+  const rows = DATA.prices.filter(r => r.billing_code === code && r.product_line === line);
+  $("chart-title").textContent = `${svc ? svc.service_name : ""}: ${line.toLowerCase()} rates by hospital`;
+
+  // tiles
+  const perHosp = [...new Set(rows.map(r => r.hospital_name))].map(h => ({ h, m: median(rows.filter(r => r.hospital_name === h).map(r => r.median_rate)) }))
+    .sort((a, b) => a.m - b.m);
+  const tiles = $("tiles");
+  tiles.replaceChildren();
+  if (perHosp.length) {
+    const lo = perHosp[0], hi = perHosp[perHosp.length - 1], clean = (s) => s.replace(" (FICTIONAL DEMO)", "");
+    tiles.append(
+      tile("Lowest hospital (median)", usd(lo.m), clean(lo.h)),
+      tile("Highest hospital (median)", usd(hi.m), clean(hi.h)),
+      tile("Spread", perHosp.length > 1 ? `${(hi.m / lo.m).toFixed(1)}×` : "–", "Highest ÷ lowest"),
+      tile("Median across insurers", usd(median(rows.map(r => r.median_rate))), `${rows.length} hospital–insurer pairs`),
+    );
+  }
+
+  // legend
+  const lg = $("legend1");
+  lg.replaceChildren();
+  const key = (svgInner, label) => { const s = el("span"); const k = el("svg", { width: 18, height: 12, viewBox: "0 0 18 12" }); svgInner.forEach(n => k.appendChild(n)); k.style.width = "18px"; s.append(k, document.createTextNode(label)); return s; };
+  lg.append(
+    key([el("circle", { cx: 9, cy: 6, r: 5, fill: "var(--series-1)" })], "Insurer median rate"),
+    key([el("rect", { x: 1, y: 2, width: 16, height: 8, rx: 4, fill: "var(--range)" })], "Lowest to highest plan"),
+    key([el("path", { d: "M9 0 L15 6 L9 12 L3 6 Z", fill: "var(--series-2)" })], "Cash price"),
+  );
+
+  renderChart1(rows);
+  renderTable(rows);
+}
+
+$("demo-banner").hidden = !DATA.is_demo;
+const f = $("footer");
+f.append(
+  el("p", {}, `Source: hospital price transparency files (45 CFR 180), ${DATA.hospitals.length} hospital${DATA.hospitals.length === 1 ? "" : "s"}. Built ${DATA.built_on}.`),
+  el("p", {}, "Rates set as a percentage of charges are converted to dollars using the hospital's list price. \"Actually paid\" is the 2026 median allowed amount, where the hospital reports it."),
+  el("p", {}, "Negotiated rates are contract prices, not what a patient owes. Out-of-pocket cost depends on the plan's deductible and coinsurance."),
+);
+$("f-service").addEventListener("change", render);
+$("f-line").addEventListener("change", render);
+let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { render(); renderChart2(); }, 150); });
+render();
+renderChart2();
+</script>
+</body>
+</html>

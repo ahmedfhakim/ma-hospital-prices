@@ -1,0 +1,62 @@
+pattern,payer_group,priority,product_line
+%medicare replacement%,Other Medicare Advantage,5,Medicare Advantage
+%mass general brigham health plan%,Mass General Brigham Health Plan,5,
+%mass gen brigham%,Mass General Brigham Health Plan,5,
+%mgb health plan%,Mass General Brigham Health Plan,5,
+%allways%,Mass General Brigham Health Plan,5,
+%wellsense%,WellSense Health Plan,5,
+%bmc healthnet%,WellSense Health Plan,5,
+%health safety net%,Health Safety Net (MA),5,Other government
+hsn%,Health Safety Net (MA),5,Other government
+%tricare%,TRICARE / VA,5,Other government
+%champva%,TRICARE / VA,5,Other government
+%veterans%,TRICARE / VA,5,Other government
+%corrections%,Correctional health,5,Other government
+%fmc devens%,Correctional health,5,Other government
+%work comp%,Workers compensation,5,Workers comp
+%workers comp%,Workers compensation,5,Workers comp
+%pace,PACE / elder service plans,5,Other government
+%elder service%,PACE / elder service plans,5,Other government
+%corner esp,PACE / elder service plans,5,Other government
+%covid%,HRSA COVID-19 uninsured fund,5,Other government
+%usfhp%,TRICARE / VA,5,Other government
+%us family health plan%,TRICARE / VA,5,Other government
+%international%,International patients,5,Commercial
+%mgbhp%,Mass General Brigham Health Plan,5,
+%centers of excellence%,Mass General Brigham Health Plan,8,
+%multiplan%,MultiPlan (rental network),10,
+%phcs%,MultiPlan (rental network),10,
+%claritev%,MultiPlan (rental network),10,
+%molina%,Molina Healthcare,10,
+%harvard pilgrim%,Point32Health (Harvard Pilgrim / Tufts),10,
+%tufts%,Point32Health (Harvard Pilgrim / Tufts),10,
+%point32%,Point32Health (Harvard Pilgrim / Tufts),10,
+%hphc%,Point32Health (Harvard Pilgrim / Tufts),10,
+%health plans inc%,Point32Health (Harvard Pilgrim / Tufts),10,
+%medex%,Blue Cross Blue Shield,5,
+%blue cross%,Blue Cross Blue Shield,10,
+%bcbs%,Blue Cross Blue Shield,10,
+%blue shield%,Blue Cross Blue Shield,10,
+%aetna%,Aetna,10,
+%meritain%,Aetna,10,
+%cigna%,Cigna,10,
+%united%,UnitedHealthcare,10,
+%uhc%,UnitedHealthcare,10,
+%umr%,UnitedHealthcare,10,
+%oxford%,UnitedHealthcare,10,
+%optum%,UnitedHealthcare,10,
+%fallon%,Fallon Health,10,
+%humana%,Humana,10,
+%unicare%,Wellpoint (UniCare),10,
+%wellpoint%,Wellpoint (UniCare),10,
+%anthem%,Wellpoint (UniCare),10,
+%wellcare%,WellCare,10,
+%cca%,Commonwealth Care Alliance,10,
+%commonwealth care alliance%,Commonwealth Care Alliance,10,
+%senior whole health%,Senior Whole Health,10,
+%eternal%,EternalHealth,10,
+%health new england%,Health New England,10,
+%hlth new england%,Health New England,10,
+%masshealth%,MassHealth (Medicaid),15,
+%medicaid%,MassHealth (Medicaid),20,
+%medicare%,Medicare (traditional),30,Medicare (traditional)

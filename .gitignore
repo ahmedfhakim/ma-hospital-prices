@@ -1,0 +1,14 @@
+# Raw price files can be several GB each -- never commit them
+data/
+!data/.gitkeep
+*.duckdb
+*.duckdb.wal
+transform/target/
+transform/logs/
+transform/dbt_packages/
+transform/.user.yml
+.venv/
+__pycache__/
+.pytest_cache/
+# dashboard/site/index.html IS committed: it's the published page (aggregates only)
+.DS_Store

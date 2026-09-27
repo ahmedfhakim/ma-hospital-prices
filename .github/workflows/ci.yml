@@ -1,0 +1,21 @@
+# Every push and pull request: run the parser tests, then the whole pipeline
+# (ingest -> dbt build with all data tests -> dashboard) on the demo hospitals.
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Parser tests (CMS example files)
+        run: make test
+      - name: End-to-end pipeline on demo data
+        run: make demo

@@ -1,0 +1,28 @@
+# Publish dashboard/site to GitHub Pages whenever the built page changes on main.
+# Build it locally with real data (`make all`), commit dashboard/site/index.html, push.
+# One-time setup: repo Settings -> Pages -> Source: "GitHub Actions".
+name: Publish dashboard
+on:
+  push:
+    branches: [main]
+    paths: [dashboard/site/**]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard/site
+      - id: deployment
+        uses: actions/deploy-pages@v4

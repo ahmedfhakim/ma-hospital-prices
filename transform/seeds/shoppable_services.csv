@@ -1,0 +1,32 @@
+billing_code,code_type,service_name,category
+70551,CPT,MRI brain without contrast,Imaging
+70553,CPT,MRI brain without then with contrast,Imaging
+72148,CPT,MRI lumbar spine without contrast,Imaging
+73721,CPT,MRI lower extremity joint without contrast,Imaging
+70450,CPT,CT head without contrast,Imaging
+74177,CPT,CT abdomen and pelvis with contrast,Imaging
+71046,CPT,Chest X-ray (2 views),Imaging
+76700,CPT,Ultrasound abdomen complete,Imaging
+77067,CPT,Screening mammography (bilateral),Imaging
+93005,CPT,Electrocardiogram (ECG) tracing - hospital component,Cardiology
+45378,CPT,Colonoscopy (diagnostic),GI procedures
+45380,CPT,Colonoscopy with biopsy,GI procedures
+45385,CPT,Colonoscopy with polyp removal (snare),GI procedures
+43239,CPT,Upper GI endoscopy with biopsy,GI procedures
+29881,CPT,Knee arthroscopy with meniscectomy,Surgery
+66984,CPT,Cataract removal with lens implant,Surgery
+47562,CPT,Laparoscopic gallbladder removal,Surgery
+49505,CPT,Inguinal hernia repair (age 5+),Surgery
+80053,CPT,Comprehensive metabolic panel,Lab
+80048,CPT,Basic metabolic panel,Lab
+80061,CPT,Lipid panel,Lab
+85025,CPT,Complete blood count (CBC) with differential,Lab
+84443,CPT,Thyroid stimulating hormone (TSH),Lab
+99203,CPT,New patient office visit (low complexity),Office visits
+99213,CPT,Established patient office visit (low complexity),Office visits
+99214,CPT,Established patient office visit (moderate complexity),Office visits
+97110,CPT,Physical therapy - therapeutic exercise (15 min),Therapy
+97161,CPT,Physical therapy evaluation (low complexity),Therapy
+470,MS-DRG,Major hip or knee joint replacement without MCC,Inpatient
+807,MS-DRG,Vaginal delivery without sterilization/D&C without CC/MCC,Inpatient
+788,MS-DRG,Cesarean section without sterilization without CC/MCC,Inpatient

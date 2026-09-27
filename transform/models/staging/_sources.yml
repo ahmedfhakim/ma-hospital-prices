@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: hpt
+    description: Output of the ingest package -- every hospital's price file, parsed to one standard layout.
+    tables:
+      - name: charges
+        description: >
+          One row per item x setting x payer x plan, from every hospital.
+          Rows with a NULL payer carry only gross / cash prices.
+        meta:
+          external_location: "read_parquet('{{ var('parquet_dir') }}/charges/*/*.parquet', hive_partitioning = true)"
+
+      - name: hospitals
+        description: One record per hospital file -- header metadata plus ingestion lineage.
+        meta:
+          external_location: "read_json('{{ var('parquet_dir') }}/hospitals/*.json', union_by_name = true)"

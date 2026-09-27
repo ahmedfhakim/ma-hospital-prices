@@ -1,0 +1,64 @@
+version: 2
+
+models:
+  - name: stg_hpt__charges
+    columns:
+      - name: hospital_id
+        data_tests: [not_null]
+      - name: setting
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [inpatient, outpatient, both]
+              config: {severity: warn}
+
+  - name: dim_hospital
+    description: One row per hospital price file, with lineage from ingestion.
+    columns:
+      - name: hospital_id
+        data_tests: [unique, not_null]
+
+  - name: dim_payer
+    description: Every raw payer/plan pair, mapped to a carrier and product line.
+    columns:
+      - name: payer_key
+        data_tests: [unique, not_null]
+      - name: payer_group
+        data_tests: [not_null]
+      - name: product_line
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [Commercial, Medicare Advantage, Medicare (traditional), Medicaid, Other government, Workers comp]
+
+  - name: dim_service
+    columns:
+      - name: billing_code
+        data_tests: [not_null]
+
+  - name: fct_negotiated_rates
+    description: One row per negotiated rate (hospital x item x setting x modifiers x payer x plan).
+    columns:
+      - name: rate_key
+        description: >
+          Real files sometimes list the same item/payer/plan twice with different rates,
+          so this warns instead of failing -- the duplicates are worth reviewing, not hiding.
+        data_tests:
+          - unique:
+              config: {severity: warn}  # real files can repeat a row; review, don't hide
+          - not_null
+      - name: hospital_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_hospital')
+                field: hospital_id
+      - name: payer_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_payer')
+                field: payer_key
+      - name: effective_rate
+        data_tests:
+          - non_negative
