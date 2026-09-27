@@ -17,11 +17,31 @@ Since 2021, federal rules (45 CFR 180) require every U.S. hospital to publish a 
 
 The same code runs in two places. Locally and in CI it uses DuckDB, which is free and needs no account. In production it runs weekly on AWS.
 
-```
-                                    ┌─► Local / CI:  Parquet on disk ─► dbt on DuckDB ────────┐
-hospitals.yml ─► cms-hpt.txt ─► download ─► parse ─┤                                                       ├─► static dashboard
-                 lookup          (skip if    (3 layouts│                                                       │   (GitHub Pages)
-                                 unchanged)  → 1 schema)└─► AWS (weekly): S3 ─► Glue catalog ─► dbt on Athena ┘
+```mermaid
+flowchart LR
+    subgraph ingest["Ingest · Python"]
+        direction LR
+        A["hospitals.yml"] --> B["cms-hpt.txt lookup<br/>find each price file"]
+        B --> C["download<br/>skip if unchanged"]
+        C --> D["parse<br/>3 layouts → 1 schema"]
+    end
+
+    D --> E[("Parquet<br/>on disk")]
+    D --> F[("S3<br/>raw + curated")]
+
+    subgraph local["Local & CI · free"]
+        E --> G["dbt on DuckDB"]
+    end
+
+    subgraph aws["AWS · weekly GitHub Actions run, OIDC login (no stored keys)"]
+        F --> H["Glue Data Catalog"]
+        H --> I["dbt on Athena"]
+    end
+
+    G --> J["Static dashboard<br/>GitHub Pages"]
+    I --> J
+
+    T["Terraform<br/>S3 · Glue · Athena<br/>IAM · budget alert"] -.-> aws
 ```
 
 | Layer | Tool | What it does |
@@ -100,6 +120,7 @@ Boston Medical Center's file (March 2026, schema v3.0.0): 483 MB, 1.33 million r
 | New payer types: MultiPlan/PHCS rental networks, international patients, transplant "centers of excellence", US Family Health Plan, Medex (Blue Cross's Medigap), Optum administering VA community care | Added to `payer_patterns.csv`. Contract names mentioning VA/TRICARE override to "Other government" |
 | BIDMC lists some payer/plan/service combinations 2–3 times with different prices and nothing to tell them apart | Left as-is and reported by the duplicate test. The dashboard's median absorbs it |
 | 28k BIDMC rates are formulas only (e.g. "% of Medicare"), with no dollar amount | Excluded from price comparisons for now (roadmap: parse the formulas) |
+| First GitHub Actions run was denied by AWS. CloudTrail showed GitHub sending its newer OIDC subject with immutable IDs (`repo:owner@<id>/repo@<id>:...`) | IAM trust policy pins the repo's permanent numeric ID, so a deleted-and-recreated repo with the same name can't inherit access |
 | BIDMC publishes no traditional Medicare rate | "% of Medicare" is blank for BIDMC (roadmap: benchmark against CMS fee schedules instead) |
 
 **Validation against the contracts themselves.** BMC's contract names state their terms, and the model reproduces them exactly: "FALLON COMMERCIAL (130% OF MEDICARE)" computes to 130% of BMC's Medicare rate, and "SENIOR WHOLE HEALTH (120% OF MEDICARE)" to 120%.
@@ -131,7 +152,7 @@ Boston Medical Center's file (March 2026, schema v3.0.0): 483 MB, 1.33 million r
 
 - [x] **Milestone 1:** ingestion for all CMS layouts, dbt models + tests, dashboard, CI. Three real hospitals (BMC, MGH, BIDMC)
 - [ ] **Milestone 2:** validate files against the CMS JSON schema and quarantine failures. Track file versions over time
-- [ ] **Milestone 3 (AWS):** S3 + Glue + Athena, Terraform, keyless weekly GitHub Actions pipeline (built and tested locally; first run on AWS pending)
+- [x] **Milestone 3 (AWS):** S3 + Glue + Athena, Terraform, keyless weekly GitHub Actions pipeline. Full cloud run (download → S3 → dbt on Athena → dashboard) in under 3 minutes
 - [ ] **Next:** Docker image; Dagster for orchestration with per-hospital retries
 - [ ] **Milestone 4:** every Massachusetts hospital. Compare negotiated rates with 2026 actual-paid amounts. Parse formula-only rates. Benchmark against CMS Medicare fee schedules
 
