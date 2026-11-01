@@ -147,14 +147,6 @@ Boston Medical Center's file (March 2026, schema v3.0.0): 483 MB, 1.33 million r
 - Hospital compliance varies. Files that fail to parse are logged in `data/manifest.json`, and the rest of the run continues.
 - `seeds/shoppable_services.csv` is a curated subset of common services, not CMS's complete shoppable services list.
 
-## Roadmap
-
-- [x] **Milestone 1:** ingestion for all CMS layouts, dbt models + tests, dashboard, CI. Three real hospitals (BMC, MGH, BIDMC)
-- [ ] **Milestone 2:** validate files against the CMS JSON schema and quarantine failures. Track file versions over time
-- [x] **Milestone 3 (AWS):** S3 + Glue + Athena, Terraform, keyless weekly GitHub Actions pipeline. Full cloud run (download → S3 → dbt on Athena → dashboard) in under 3 minutes
-- [ ] **Next:** Docker image; Dagster for orchestration with per-hospital retries
-- [ ] **Milestone 4:** every Massachusetts hospital. Compare negotiated rates with 2026 actual-paid amounts. Parse formula-only rates. Benchmark against CMS Medicare fee schedules
-
 ## Sources
 
 - [CMS Hospital Price Transparency](https://www.cms.gov/priorities/key-initiatives/hospital-price-transparency)
