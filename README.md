@@ -4,6 +4,14 @@ A pipeline that collects hospital price transparency files, models them with dbt
 
 **Live dashboard:** https://ahmedfhakim.github.io/ma-hospital-prices/
 
+## Key findings
+
+Three Boston academic medical centers (BMC, MGH, BIDMC), 2026 price files, commercial insurance unless noted:
+
+- **The hospital matters.** Mass General is the most expensive for most outpatient services and BMC the least. A basic metabolic panel costs $16 at BMC and $108 at MGH (6.6×); a brain MRI with and without contrast costs $855 vs. $1,826.
+- **So does the contract.** At BMC alone, the same brain MRI pays about $516 under fee-schedule contracts and about $2,245 under contracts paid as a percentage of list price.
+- **Uninsured patients can pay more than insured ones.** BMC's cash price for that MRI ($2,066) is higher than most insurers' negotiated rates.
+
 ## Why this data
 
 Since 2021, federal rules (45 CFR 180) require every U.S. hospital to publish a machine-readable file of its prices: list prices, cash prices, and the rate negotiated with **each insurer and plan**. The 2026 update added what hospitals were **actually paid** (median, 10th and 90th percentile allowed amounts). The data is public, but it's hard to use:
