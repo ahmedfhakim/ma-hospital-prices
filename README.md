@@ -15,7 +15,7 @@ Since 2021, federal rules (45 CFR 180) require every U.S. hospital to publish a 
 
 ## Architecture
 
-The same code runs in two places. Locally and in CI it uses DuckDB, which is free and needs no account. In production it runs weekly on AWS.
+The same code runs in two places. Locally and in CI it uses DuckDB, which is free and needs no account. The production version runs on AWS (S3, Glue, Athena), deployed with Terraform and scheduled weekly by GitHub Actions.
 
 ```mermaid
 flowchart LR
@@ -95,7 +95,7 @@ cd transform && dbt build --profiles-dir . --target athena --full-refresh  # mod
 python dashboard/build.py --source athena
 ```
 
-## What real files taught us
+## What the real files showed
 
 Boston Medical Center's file (March 2026, schema v3.0.0): 483 MB, 1.33 million rows, tall CSV. Every row parsed in about 15 seconds. The first run also exposed problems that the CMS examples and demo data couldn't:
 
@@ -119,9 +119,9 @@ Boston Medical Center's file (March 2026, schema v3.0.0): 483 MB, 1.33 million r
 | BIDMC puts list and cash prices on chargemaster lines and negotiated rates on separate items that share only the CPT code | List-price lookup falls back from same item → same item, any setting → same billing code. `list_price_match` records which one was used |
 | New payer types: MultiPlan/PHCS rental networks, international patients, transplant "centers of excellence", US Family Health Plan, Medex (Blue Cross's Medigap), Optum administering VA community care | Added to `payer_patterns.csv`. Contract names mentioning VA/TRICARE override to "Other government" |
 | BIDMC lists some payer/plan/service combinations 2–3 times with different prices and nothing to tell them apart | Left as-is and reported by the duplicate test. The dashboard's median absorbs it |
-| 28k BIDMC rates are formulas only (e.g. "% of Medicare"), with no dollar amount | Excluded from price comparisons for now (roadmap: parse the formulas) |
+| 28k BIDMC rates are formulas only (e.g. "% of Medicare"), with no dollar amount | Excluded from price comparisons; parsing the formulas is a possible next step |
 | First GitHub Actions run was denied by AWS. CloudTrail showed GitHub sending its newer OIDC subject with immutable IDs (`repo:owner@<id>/repo@<id>:...`) | IAM trust policy pins the repo's permanent numeric ID, so a deleted-and-recreated repo with the same name can't inherit access |
-| BIDMC publishes no traditional Medicare rate | "% of Medicare" is blank for BIDMC (roadmap: benchmark against CMS fee schedules instead) |
+| BIDMC publishes no traditional Medicare rate | "% of Medicare" is blank for BIDMC; CMS fee schedules could serve as the benchmark instead |
 
 **Validation against the contracts themselves.** BMC's contract names state their terms, and the model reproduces them exactly: "FALLON COMMERCIAL (130% OF MEDICARE)" computes to 130% of BMC's Medicare rate, and "SENIOR WHOLE HEALTH (120% OF MEDICARE)" to 120%.
 
@@ -136,7 +136,7 @@ Boston Medical Center's file (March 2026, schema v3.0.0): 483 MB, 1.33 million r
 - **Payer matching in a seed, not in SQL.** The mapping is data that non-engineers can review and extend. Priority numbers settle overlaps (e.g. "Mass General Brigham Health Plan" wins over other patterns).
 - **Percentage rates converted, but flagged.** "60% of billed charges" becomes 0.6 × the list price, with `rate_source` recording that it was derived.
 - **One dbt project, two engines.** DuckDB costs nothing and needs no account, so CI and anyone cloning the repo can run everything. Athena is the production engine. Most SQL is written to run on both; the rest (arrays, regex, median, date parsing) goes through small dispatch macros. Rewriting the SQL to be portable changed no results on DuckDB: all 1.56M rates, 1,212 dashboard rows and 202 payer mappings came out identical. On Athena the fact table and payer mappings match exactly too; the one known difference is that Athena has no exact median, so medians use `approx_percentile` (a few list prices shift slightly; e.g. 9,761 vs. 9,767 rate-above-list-price warnings).
-- **Serverless on AWS: S3 + Athena, no warehouse to keep running.** At this data size, a weekly run costs cents a month. 
+- **Serverless on AWS: S3 + Athena, no warehouse to keep running.** At this data size, a weekly run costs cents a month.
 - **No AWS keys in GitHub.** The weekly job gets temporary credentials through OIDC, for a role that only trusts this repo's `main` branch and can only touch this project's bucket, workgroup and Glue databases.
 - **Static dashboard.** The published page contains only aggregates and loads instantly. Rebuilding it is one command.
 
